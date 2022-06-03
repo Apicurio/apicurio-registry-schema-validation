@@ -60,9 +60,7 @@ public class JsonValidator {
     public JsonValidator(Map<String, Object> configuration, Optional<ArtifactReference> artifactReference) {
         this.schemaResolver = new DefaultSchemaResolver<>();
         this.schemaResolver.configure(configuration, new JsonSchemaParser());
-        if (artifactReference.isPresent()) {
-            this.artifactReference = artifactReference.get();
-        }
+        artifactReference.ifPresent(reference -> this.artifactReference = reference);
     }
 
     protected JsonValidator() {
@@ -144,8 +142,7 @@ public class JsonValidator {
             return ArtifactType.JSON;
         }
 
-        @Override
-        public Schema parseSchema(byte[] rawSchema) {
+        @Override public Schema parseSchema(byte[] rawSchema, Map<String, ParsedSchema<Schema>> references) {
             return SchemaLoader.load(new JSONObject(new JSONTokener(new ByteArrayInputStream(rawSchema))));
         }
 
