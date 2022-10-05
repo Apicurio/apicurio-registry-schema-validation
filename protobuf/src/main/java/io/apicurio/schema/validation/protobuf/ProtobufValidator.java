@@ -1,19 +1,22 @@
 package io.apicurio.schema.validation.protobuf;
 
+import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
-import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import io.apicurio.registry.resolver.*;
 import io.apicurio.registry.resolver.data.Record;
 import io.apicurio.registry.resolver.strategy.ArtifactReference;
+import io.apicurio.registry.resolver.utils.Utils;
 import io.apicurio.registry.utils.protobuf.schema.ProtobufSchema;
 import io.apicurio.schema.validation.protobuf.ref.RefOuterClass;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Provides validation APIs for Protobuf objects (Java objects, byte[],...) against a Protobuf Schema.
@@ -25,6 +28,8 @@ public class ProtobufValidator<U extends Message> {
 
     private SchemaResolver<ProtobufSchema, U> schemaResolver;
     private ArtifactReference artifactReference;
+    private final Map<String, Method> parseMethodsCache = new ConcurrentHashMap<>();
+    private static final String PROTOBUF_PARSE_METHOD = "parseFrom";
 
     /**
      * Creates the JSON validator.
@@ -33,8 +38,8 @@ public class ProtobufValidator<U extends Message> {
      * @param configuration,     configuration properties for {@link DefaultSchemaResolver} for config properties see {@link SchemaResolverConfig}
      * @param artifactReference, optional {@link ArtifactReference} used as a static configuration to always use the same schema for validation when invoking {@link ProtobufValidator#validateByArtifactReference(U)}
      */
-    public ProtobufValidator(Map<String, Object> configuration,
-            Optional<ArtifactReference> artifactReference) {
+    public ProtobufValidator(Map<String, Object> configuration, Optional<ArtifactReference> artifactReference,
+            Class<?> parsedType) {
         this.schemaResolver = new DefaultSchemaResolver();
         this.schemaResolver.configure(configuration, new ProtobufSchemaParser());
         artifactReference.ifPresent(reference -> this.artifactReference = reference);
@@ -88,11 +93,61 @@ public class ProtobufValidator<U extends Message> {
             descriptor = schema.getParsedSchema().getFileDescriptor().getMessageTypes().get(0);
         }
 
-        try {
-            final U dynamicMessage = (U) DynamicMessage.parseFrom(descriptor, is);
-            return ProtobufValidationResult.SUCCESS;
-        } catch (IOException e) {
-            return ProtobufValidationResult.SUCCESS;
+        String className = deriveClassFromDescriptor(descriptor);
+        if (className != null) {
+            final U resultParsed = invokeParseMethod(is, className);
+            if (record.payload().getClass().equals(resultParsed.getClass())) {
+                return ProtobufValidationResult.SUCCESS;
+            }
+        } else {
+            return ProtobufValidationResult.fromErrors(List.of(new ValidationError()));
         }
+        return ProtobufValidationResult.fromErrors(List.of(new ValidationError()));
+    }
+
+    private U invokeParseMethod(InputStream buffer, String className) {
+        try {
+            Method parseMethod = parseMethodsCache.computeIfAbsent(className, k -> {
+                Class<?> protobufClass = Utils.loadClass(className);
+                try {
+                    return protobufClass.getDeclaredMethod(PROTOBUF_PARSE_METHOD, InputStream.class);
+                } catch (NoSuchMethodException | SecurityException e) {
+                    throw new IllegalArgumentException(
+                            "Class " + className + " is not a valid protobuf message class", e);
+                }
+            });
+            return (U) parseMethod.invoke(null, buffer);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            parseMethodsCache.remove(className);
+            throw new IllegalArgumentException("Not a valid protobuf builder", e);
+        }
+    }
+
+    public String deriveClassFromDescriptor(Descriptors.Descriptor des) {
+        Descriptors.Descriptor descriptor = des;
+        Descriptors.FileDescriptor fd = descriptor.getFile();
+        DescriptorProtos.FileOptions o = fd.getOptions();
+        String p = o.hasJavaPackage() ? o.getJavaPackage() : fd.getPackage();
+        String outer = "";
+        if (!o.getJavaMultipleFiles()) {
+            if (o.hasJavaOuterClassname()) {
+                outer = o.getJavaOuterClassname();
+            } else {
+                // Can't determine full name without either java_outer_classname or java_multiple_files
+                return null;
+            }
+        }
+        StringBuilder inner = new StringBuilder();
+        while (descriptor != null) {
+            if (inner.length() == 0) {
+                inner.insert(0, descriptor.getName());
+            } else {
+                inner.insert(0, descriptor.getName() + "$");
+            }
+            descriptor = descriptor.getContainingType();
+        }
+        String d1 = (!outer.isEmpty() || inner.length() != 0 ? "." : "");
+        String d2 = (!outer.isEmpty() && inner.length() != 0 ? "$" : "");
+        return p + d1 + outer + d2 + inner;
     }
 }
