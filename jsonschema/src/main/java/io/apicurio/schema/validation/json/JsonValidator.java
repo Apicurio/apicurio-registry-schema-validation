@@ -142,7 +142,8 @@ public class JsonValidator {
             return ArtifactType.JSON;
         }
 
-        @Override public Schema parseSchema(byte[] rawSchema, Map<String, ParsedSchema<Schema>> references) {
+        @Override
+        public Schema parseSchema(byte[] rawSchema,  Map<String, ParsedSchema<Schema>> references) {
             return SchemaLoader.load(new JSONObject(new JSONTokener(new ByteArrayInputStream(rawSchema))));
         }
 
