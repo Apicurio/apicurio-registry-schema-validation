@@ -22,7 +22,7 @@ public class ProtobufValidatorTest {
 
     @Test
     public void testValidMessage() {
-        ProtobufValidator<MessageExample> validator = new ProtobufValidator<>();
+        ProtobufValidator validator = new ProtobufValidator();
 
         MessageExample messageExample = MessageExample.newBuilder()
                 .setKey("testValidMessageKey")
@@ -35,7 +35,7 @@ public class ProtobufValidatorTest {
         ParsedSchemaImpl<ProtobufSchema> ps = new ParsedSchemaImpl<ProtobufSchema>().setParsedSchema(
                 protobufSchema).setRawSchema(schemaBytes);
 
-        Record<MessageExample> protobufRecord = new ProtobufRecord<>(messageExample, null);
+        Record protobufRecord = new ProtobufRecord(messageExample, null);
 
         final ProtobufValidationResult result = validator.validate(ps, protobufRecord);
 
@@ -44,7 +44,7 @@ public class ProtobufValidatorTest {
 
     @Test
     public void testInvalidMessage() {
-        ProtobufValidator<MessageExample2> validator = new ProtobufValidator<>();
+        ProtobufValidator validator = new ProtobufValidator();
 
         MessageExample2 messageExample = MessageExample2.newBuilder()
                 .setKey2("testValidMessageKey")
@@ -57,7 +57,7 @@ public class ProtobufValidatorTest {
         ParsedSchemaImpl<ProtobufSchema> ps = new ParsedSchemaImpl<ProtobufSchema>().setParsedSchema(
                 protobufSchema).setRawSchema(schemaBytes);
 
-        Record<MessageExample2> protobufRecord = new ProtobufRecord<>(messageExample, null);
+        Record protobufRecord = new ProtobufRecord(messageExample, null);
 
         final ProtobufValidationResult result = validator.validate(ps, protobufRecord);
 
