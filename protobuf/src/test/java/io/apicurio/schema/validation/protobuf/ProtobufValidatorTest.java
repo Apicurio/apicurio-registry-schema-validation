@@ -4,8 +4,10 @@ import io.apicurio.registry.resolver.ParsedSchemaImpl;
 import io.apicurio.registry.resolver.data.Record;
 import io.apicurio.registry.utils.IoUtil;
 import io.apicurio.registry.utils.protobuf.schema.ProtobufSchema;
-import io.apicurio.schema.validation.protobuf.ref.MessageExample;
-import io.apicurio.schema.validation.protobuf.ref.MessageExample2;
+import io.apicurio.schema.validation.protobuf.ref.MessageExample2OuterClass;
+import io.apicurio.schema.validation.protobuf.ref.MessageExample2OuterClass.MessageExample2;
+import io.apicurio.schema.validation.protobuf.ref.MessageExampleOuterClass;
+import io.apicurio.schema.validation.protobuf.ref.MessageExampleOuterClass.MessageExample;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -61,11 +63,6 @@ public class ProtobufValidatorTest {
 
         assertFalse(result.success());
         assertNotNull(result.getValidationErrors());
-    }
-
-    @Test
-    public void testInvalidMessageMultipleErrors() {
-
     }
 
     public static byte[] readResource(String resourceName) {

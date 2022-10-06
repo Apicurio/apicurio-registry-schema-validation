@@ -1,7 +1,5 @@
 syntax = "proto3";
 package io.apicurio.schema.validation.protobuf.ref;
-option java_package = "io.apicurio.schema.validation.protobuf.ref";
-option java_multiple_files=true;
 
 message MessageExample2 {
 

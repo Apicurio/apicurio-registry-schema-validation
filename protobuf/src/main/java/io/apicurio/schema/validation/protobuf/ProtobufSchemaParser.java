@@ -108,12 +108,6 @@ public class ProtobufSchemaParser<U extends Message> implements SchemaParser<Pro
         return schemaReferences;
     }
 
-    /**
-     * This method converts the Descriptor to a ProtoFileElement that allows to get a textual representation .proto file
-     *
-     * @param fileDescriptor
-     * @return textual protobuf representation
-     */
     public ProtoFileElement toProtoFileElement(Descriptors.FileDescriptor fileDescriptor) {
         return FileDescriptorUtils.fileDescriptorToProtoFile(fileDescriptor.toProto());
     }

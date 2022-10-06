@@ -1,9 +1,0 @@
-syntax = "proto3";
-package io.apicurio.schema.validation.protobuf.ref;
-
-option optimize_for = SPEED;
-option java_package = "io.apicurio.schema.validation.protobuf.ref";
-
-message Ref {
-  string name = 1;
-}
