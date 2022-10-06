@@ -17,10 +17,10 @@ import java.util.*;
  *
  * @author Carles Arnal
  */
-public class ProtobufValidator<U extends Message> {
+public class ProtobufValidator {
 
-    private final ProtobufSchemaParser<U> protobufSchemaUSchemaParser;
-    private SchemaResolver<ProtobufSchema, U> schemaResolver;
+    private final ProtobufSchemaParser<Message> protobufSchemaUSchemaParser;
+    private SchemaResolver<ProtobufSchema, Message> schemaResolver;
     private ArtifactReference artifactReference;
 
     /**
@@ -50,12 +50,12 @@ public class ProtobufValidator<U extends Message> {
      * @param bean , the object that will be validated against the Protobuf Schema, must implement {@link Message}.
      * @return ProtobufValidationResult
      */
-    public ProtobufValidationResult validateByArtifactReference(U bean) {
+    public ProtobufValidationResult validateByArtifactReference(Message bean) {
         Objects.requireNonNull(this.artifactReference,
                 "ArtifactReference must be provided when creating JsonValidator in order to use this feature");
         SchemaLookupResult<ProtobufSchema> schema = this.schemaResolver.resolveSchemaByArtifactReference(
                 this.artifactReference);
-        return validate(schema.getParsedSchema(), new ProtobufRecord<>(bean, null));
+        return validate(schema.getParsedSchema(), new ProtobufRecord(bean, null));
     }
 
     /**
@@ -67,12 +67,12 @@ public class ProtobufValidator<U extends Message> {
      * @param record , the record used to resolve the schema used for validation and to provide the payload to validate.
      * @return ProtobufValidationResult
      */
-    public ProtobufValidationResult validate(Record<U> record) {
+    public ProtobufValidationResult validate(Record<Message> record) {
         SchemaLookupResult<ProtobufSchema> schema = this.schemaResolver.resolveSchema(record);
         return validate(schema.getParsedSchema(), record);
     }
 
-    protected ProtobufValidationResult validate(ParsedSchema<ProtobufSchema> schema, Record<U> record) {
+    protected ProtobufValidationResult validate(ParsedSchema<ProtobufSchema> schema, Record<Message> record) {
         if (schema.getParsedSchema() != null && schema.getParsedSchema().getFileDescriptor()
                 .findMessageTypeByName(record.payload().getDescriptorForType().getName()) == null) {
 
@@ -91,7 +91,7 @@ public class ProtobufValidator<U extends Message> {
         return ProtobufValidationResult.SUCCESS;
     }
 
-    private List<ProtobufDifference> validate(ParsedSchema<ProtobufSchema> schemaFromRegistry, U data) {
+    private List<ProtobufDifference> validate(ParsedSchema<ProtobufSchema> schemaFromRegistry, Message data) {
         ProtobufFile fileBefore = schemaFromRegistry.getParsedSchema().getProtobufFile();
         ProtobufFile fileAfter = new ProtobufFile(
                 protobufSchemaUSchemaParser.toProtoFileElement(data.getDescriptorForType().getFile()));

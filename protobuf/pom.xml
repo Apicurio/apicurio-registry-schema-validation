@@ -40,7 +40,6 @@
     </dependencies>
 
     <build>
-
         <plugins>
             <plugin>
                 <groupId>kr.motd.maven</groupId>
@@ -77,7 +76,6 @@
                 </executions>
             </plugin>
         </plugins>
-
     </build>
 
 </project>
