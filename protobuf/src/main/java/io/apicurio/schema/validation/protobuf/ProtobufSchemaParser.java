@@ -22,7 +22,7 @@ import java.util.Map;
 public class ProtobufSchemaParser<U extends Message> implements SchemaParser<ProtobufSchema, U> {
 
     @Override
-    public ArtifactType artifactType() {
+    public String artifactType() {
         return ArtifactType.PROTOBUF;
     }
 

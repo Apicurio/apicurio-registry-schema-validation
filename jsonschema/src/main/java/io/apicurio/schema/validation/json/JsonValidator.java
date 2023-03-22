@@ -138,7 +138,7 @@ public class JsonValidator {
 
     public static class JsonSchemaParser implements SchemaParser<Schema, Object> {
         @Override
-        public ArtifactType artifactType() {
+        public String artifactType() {
             return ArtifactType.JSON;
         }
 
