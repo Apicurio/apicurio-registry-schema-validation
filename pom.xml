@@ -74,7 +74,7 @@
         <maven.compiler.target>11</maven.compiler.target>
         <!-- <version.org.apache.felix.maven-bundle-plugin>5.1.4</version.org.apache.felix.maven-bundle-plugin> -->
         <version.maven-javadoc-plugin>3.5.0</version.maven-javadoc-plugin>
-        <version.maven-source-plugin>3.2.1</version.maven-source-plugin>
+        <version.maven-source-plugin>3.3.0</version.maven-source-plugin>
         <version.maven-compiler-plugin>3.11.0</version.maven-compiler-plugin>
         
         <apicurio.registry.version>2.4.1.Final</apicurio.registry.version>
