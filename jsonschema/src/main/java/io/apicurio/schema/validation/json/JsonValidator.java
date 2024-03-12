@@ -154,6 +154,12 @@ public class JsonValidator {
         }
 
         @Override
+        public ParsedSchema<Schema> getSchemaFromData(Record<Object> record, boolean dereference) {
+            //not supported yet?
+            return null;
+        }
+
+        @Override
         public boolean supportsExtractSchemaFromData() {
             return false;
         }
