@@ -88,6 +88,11 @@ public class ProtobufSchemaParser<U extends Message> implements SchemaParser<Pro
                 .setSchemaReferences(handleDependencies(schemaFileDescriptor)).setRawSchema(rawSchema);
     }
 
+    @Override
+    public ParsedSchema<ProtobufSchema> getSchemaFromData(Record<U> record, boolean dereference) {
+        return null;
+    }
+
     private List<ParsedSchema<ProtobufSchema>> handleDependencies(Descriptors.FileDescriptor fileDescriptor) {
         List<ParsedSchema<ProtobufSchema>> schemaReferences = new ArrayList<>();
         fileDescriptor.getDependencies().forEach(referenceFileDescriptor -> {

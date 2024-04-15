@@ -70,7 +70,7 @@ public class JsonValidator {
     /**
      * Validates the provided object against a JSON Schema.
      * The JSON Schema will be fetched from Apicurio Registry using the {@link ArtifactReference} provided in the constructor, this artifact must exist in the registry.
-     * @param bean , the object that will be validate against the JSON Schema, can be a custom Java bean, String, byte[], InputStream, {@link JSONObject} or Map.
+     * @param bean, the object that will be validate against the JSON Schema, can be a custom Java bean, String, byte[], InputStream, {@link JSONObject} or Map.
      * @return JsonValidationResult
      */
     public JsonValidationResult validateByArtifactReference(Object bean) {
@@ -149,6 +149,12 @@ public class JsonValidator {
 
         @Override
         public ParsedSchema<Schema> getSchemaFromData(Record<Object> data) {
+            //not supported yet?
+            return null;
+        }
+
+        @Override
+        public ParsedSchema<Schema> getSchemaFromData(Record<Object> record, boolean dereference) {
             //not supported yet?
             return null;
         }
