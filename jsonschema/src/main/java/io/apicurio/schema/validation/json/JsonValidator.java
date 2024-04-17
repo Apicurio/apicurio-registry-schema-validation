@@ -16,6 +16,7 @@
 
 package io.apicurio.schema.validation.json;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.networknt.schema.JsonSchema;
@@ -34,6 +35,9 @@ import io.apicurio.registry.types.ArtifactType;
 import io.apicurio.registry.utils.IoUtil;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -53,6 +57,8 @@ public class JsonValidator {
 
     private SchemaResolver<JsonSchema, Object> schemaResolver;
     private ArtifactReference artifactReference;
+
+    static final ObjectMapper mapper = new ObjectMapper().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
 
     /**
      * Creates the JSON validator.
@@ -111,8 +117,15 @@ public class JsonValidator {
     }
 
     private JsonNode createJSONObject(Object bean) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        return objectMapper.convertValue(bean, JsonNode.class);
+        if (bean instanceof ByteBuffer) {
+            try (InputStream inputStream = new ByteBufferInputStream((ByteBuffer) bean)) {
+                return mapper.readValue(inputStream, JsonNode.class);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            return mapper.convertValue(bean, JsonNode.class);
+        }
     }
 
     private List<ValidationError> extractValidationErrors(Set<ValidationMessage> validationErrors) {
