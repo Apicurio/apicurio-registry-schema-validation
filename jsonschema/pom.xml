@@ -18,8 +18,12 @@
             <artifactId>apicurio-registry-schema-resolver</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.everit.json</groupId>
-            <artifactId>org.everit.json.schema</artifactId>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
         </dependency>
         <!-- Test dependencies -->
         <dependency>
