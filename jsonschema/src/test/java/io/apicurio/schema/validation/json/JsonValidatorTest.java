@@ -36,12 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class JsonValidatorTest {
 
-    private static ObjectMapper objectMapper;
-
-    @BeforeAll
-    public static void initMapper() {
-        objectMapper = new ObjectMapper();
-    }
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     public void testValidMessage() {
