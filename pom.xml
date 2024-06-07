@@ -7,7 +7,7 @@
     <groupId>io.apicurio</groupId>
     <artifactId>apicurio-registry-schema-validation</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.7</version>
+    <version>0.0.8-SNAPSHOT</version>
 
 
     <name>apicurio-registry-schema-validation</name>
