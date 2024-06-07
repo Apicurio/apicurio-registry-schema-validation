@@ -16,6 +16,7 @@
 
 package io.apicurio.schema.validation.json;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,7 +59,7 @@ public class JsonValidator {
     private SchemaResolver<JsonSchema, Object> schemaResolver;
     private ArtifactReference artifactReference;
 
-    static final ObjectMapper mapper = new ObjectMapper().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+    static final ObjectMapper mapper = new ObjectMapper();
 
     /**
      * Creates the JSON validator.
@@ -118,12 +119,15 @@ public class JsonValidator {
 
     private JsonNode createJSONObject(Object bean) {
         if (bean instanceof ByteBuffer) {
-            try (InputStream inputStream = new ByteBufferInputStream((ByteBuffer) bean)) {
-                return mapper.readValue(inputStream, JsonNode.class);
-            } catch (IOException e) {
+            try (InputStream inputStream = new ByteBufferInputStream((ByteBuffer) bean);
+                    JsonParser parser = mapper.getFactory().createParser(inputStream)) {
+                return parser.readValueAs(JsonNode.class);
+            }
+            catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        } else {
+        }
+        else {
             return mapper.convertValue(bean, JsonNode.class);
         }
     }
