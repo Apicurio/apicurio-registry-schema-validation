@@ -5,7 +5,7 @@
     <parent>
         <artifactId>apicurio-registry-schema-validation</artifactId>
         <groupId>io.apicurio</groupId>
-        <version>0.1.0</version>
+        <version>0.1.1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
