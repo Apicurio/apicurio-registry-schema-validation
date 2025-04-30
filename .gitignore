@@ -15,6 +15,12 @@ local.properties
 .loadpath
 .recommenders
 
+### Idea ###
+./idea
+
+### VSCode ###
+./vscode
+
 # External tool builders
 .externalToolBuilders/
 
