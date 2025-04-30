@@ -70,13 +70,11 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <!-- <version.org.apache.felix.maven-bundle-plugin>5.1.4</version.org.apache.felix.maven-bundle-plugin> -->
-        <version.maven-javadoc-plugin>3.5.0</version.maven-javadoc-plugin>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <version.maven-source-plugin>3.2.1</version.maven-source-plugin>
         <version.maven-compiler-plugin>3.11.0</version.maven-compiler-plugin>
-        <apicurio.registry.version>2.5.11.Final</apicurio.registry.version>
+        <apicurio.registry.version>3.0.7</apicurio.registry.version>
         <json-schema-validator.version>1.5.1</json-schema-validator.version>
         <org.json.version>20240303</org.json.version>
 
@@ -144,19 +142,6 @@
                         <id>attach-sources</id>
                         <goals>
                             <goal>jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>${version.maven-javadoc-plugin}</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
                         </goals>
                     </execution>
                 </executions>
