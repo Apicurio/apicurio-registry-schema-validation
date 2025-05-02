@@ -3,6 +3,7 @@ package io.apicurio.schema.validation.protobuf;
 import com.google.protobuf.Message;
 import io.apicurio.registry.protobuf.ProtobufDifference;
 import io.apicurio.registry.resolver.*;
+import io.apicurio.registry.resolver.config.SchemaResolverConfig;
 import io.apicurio.registry.resolver.data.Record;
 import io.apicurio.registry.resolver.strategy.ArtifactReference;
 import io.apicurio.registry.rules.compatibility.protobuf.ProtobufCompatibilityCheckerLibrary;
