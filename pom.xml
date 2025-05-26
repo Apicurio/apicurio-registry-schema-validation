@@ -76,7 +76,7 @@
         <version.maven-source-plugin>3.2.1</version.maven-source-plugin>
         <version.maven-compiler-plugin>3.11.0</version.maven-compiler-plugin>
         <apicurio.registry.version>3.0.7</apicurio.registry.version>
-        <json-schema-validator.version>1.5.1</json-schema-validator.version>
+        <json-schema-validator.version>1.5.7</json-schema-validator.version>
         <org.json.version>20240303</org.json.version>
 
         <junit.version>5.11.0</junit.version>
