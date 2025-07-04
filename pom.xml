@@ -79,7 +79,7 @@
         <json-schema-validator.version>1.5.1</json-schema-validator.version>
         <org.json.version>20240303</org.json.version>
 
-        <junit.version>5.11.0</junit.version>
+        <junit.version>5.13.3</junit.version>
     </properties>
 
     <dependencyManagement>
