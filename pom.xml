@@ -72,8 +72,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <version.maven-javadoc-plugin>3.5.0</version.maven-javadoc-plugin>
-        <version.maven-source-plugin>3.2.1</version.maven-source-plugin>
+        <version.maven-javadoc-plugin>3.11.2</version.maven-javadoc-plugin>
+        <version.maven-source-plugin>3.3.1</version.maven-source-plugin>
         <version.maven-compiler-plugin>3.11.0</version.maven-compiler-plugin>
         <apicurio.registry.version>3.1.2</apicurio.registry.version>
         <json-schema-validator.version>1.5.1</json-schema-validator.version>
@@ -169,36 +169,6 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <version>3.3.1</version>
-                        <executions>
-                            <execution>
-                                <id>attach-sources</id>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.11.2</version>
-                        <executions>
-                            <execution>
-                                <id>attach-javadocs</id>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                                <configuration>
-                                    <source>11</source>
-                                    <doclint>none</doclint>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
                         <version>0.7.0</version>
@@ -207,7 +177,7 @@
                             <publishingServerId>central</publishingServerId>
                             <waitUntil>published</waitUntil>
                             <autoPublish>true</autoPublish>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                            <checksums>required</checksums>
                         </configuration>
                     </plugin>
                     <plugin>
