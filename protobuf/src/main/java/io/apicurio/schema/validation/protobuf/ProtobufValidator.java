@@ -6,6 +6,7 @@ import io.apicurio.registry.resolver.*;
 import io.apicurio.registry.resolver.config.SchemaResolverConfig;
 import io.apicurio.registry.resolver.data.Record;
 import io.apicurio.registry.resolver.strategy.ArtifactReference;
+import io.apicurio.registry.rest.client.models.ProblemDetails;
 import io.apicurio.registry.rules.compatibility.protobuf.ProtobufCompatibilityCheckerLibrary;
 import io.apicurio.registry.utils.protobuf.schema.ProtobufFile;
 import io.apicurio.registry.utils.protobuf.schema.ProtobufSchema;
@@ -54,9 +55,15 @@ public class ProtobufValidator {
     public ProtobufValidationResult validateByArtifactReference(Message bean) {
         Objects.requireNonNull(this.artifactReference,
                 "ArtifactReference must be provided when creating JsonValidator in order to use this feature");
-        SchemaLookupResult<ProtobufSchema> schema = this.schemaResolver.resolveSchemaByArtifactReference(
-                this.artifactReference);
-        return validate(schema.getParsedSchema(), new ProtobufRecord(bean, null));
+        try {
+            SchemaLookupResult<ProtobufSchema> schema = this.schemaResolver.resolveSchemaByArtifactReference(
+                    this.artifactReference);
+            return validate(schema.getParsedSchema(), new ProtobufRecord(bean, null));
+        } catch (Exception e) {
+            return ProtobufValidationResult.fromErrors(List.of(
+                new ValidationError("Failed to resolve schema from registry: " + extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
+            ));
+        }
     }
 
     /**
@@ -69,8 +76,14 @@ public class ProtobufValidator {
      * @return ProtobufValidationResult
      */
     public ProtobufValidationResult validate(Record<Message> record) {
-        SchemaLookupResult<ProtobufSchema> schema = this.schemaResolver.resolveSchema(record);
-        return validate(schema.getParsedSchema(), record);
+        try {
+            SchemaLookupResult<ProtobufSchema> schema = this.schemaResolver.resolveSchema(record);
+            return validate(schema.getParsedSchema(), record);
+        } catch (Exception e) {
+            return ProtobufValidationResult.fromErrors(List.of(
+                new ValidationError("Failed to resolve schema from registry: " + extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
+            ));
+        }
     }
 
     protected ProtobufValidationResult validate(ParsedSchema<ProtobufSchema> schema, Record<Message> record) {
@@ -99,5 +112,40 @@ public class ProtobufValidator {
         ProtobufCompatibilityCheckerLibrary checker = new ProtobufCompatibilityCheckerLibrary(fileBefore,
                 fileAfter);
         return checker.findDifferences();
+    }
+
+    private String extractErrorMessage(Exception e) {
+        StringBuilder errorMessage = new StringBuilder();
+
+        // Start with the exception type and message
+        errorMessage.append(e.getClass().getSimpleName());
+        String message = getDetailedMessage(e);
+        if (message != null && !message.isEmpty()) {
+            errorMessage.append(": ").append(message);
+        }
+
+        // Add cause chain for more context
+        Throwable cause = e.getCause();
+        while (cause != null) {
+            errorMessage.append(" | Caused by: ").append(cause.getClass().getSimpleName());
+            String causeMessage = getDetailedMessage(cause);
+            if (causeMessage != null && !causeMessage.isEmpty()) {
+                errorMessage.append(": ").append(causeMessage);
+            }
+            cause = cause.getCause();
+        }
+
+        return errorMessage.toString();
+    }
+
+    private String getDetailedMessage(Throwable throwable) {
+        // Special handling for ProblemDetails from Apicurio Registry REST client
+        if (throwable instanceof ProblemDetails) {
+            String detail = ((ProblemDetails) throwable).getDetail();
+            if (detail != null && !detail.isEmpty()) {
+                return detail;
+            }
+        }
+        return throwable.getMessage();
     }
 }

@@ -23,7 +23,7 @@ import java.util.List;
  */
 public class JsonValidationResult {
 
-    protected static final JsonValidationResult SUCCESS = successfull();
+    protected static final JsonValidationResult SUCCESS = successful();
 
     private boolean success;
     private List<ValidationError> validationErrors;
@@ -54,7 +54,7 @@ public class JsonValidationResult {
         return new JsonValidationResult(errors);
     }
 
-    public static JsonValidationResult successfull() {
+    public static JsonValidationResult successful() {
         return new JsonValidationResult(null);
     }
 
