@@ -73,7 +73,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <version.maven-javadoc-plugin>3.11.2</version.maven-javadoc-plugin>
-        <version.maven-source-plugin>3.3.1</version.maven-source-plugin>
+        <version.maven-source-plugin>3.4.0</version.maven-source-plugin>
         <version.maven-compiler-plugin>3.11.0</version.maven-compiler-plugin>
         <apicurio.registry.version>3.1.2</apicurio.registry.version>
         <json-schema-validator.version>1.5.1</json-schema-validator.version>
