@@ -75,11 +75,11 @@
         <version.maven-javadoc-plugin>3.11.2</version.maven-javadoc-plugin>
         <version.maven-source-plugin>3.3.1</version.maven-source-plugin>
         <version.maven-compiler-plugin>3.11.0</version.maven-compiler-plugin>
-        <apicurio.registry.version>3.1.4</apicurio.registry.version>
+        <apicurio.registry.version>3.1.7</apicurio.registry.version>
         <json-schema-validator.version>1.5.1</json-schema-validator.version>
         <org.json.version>20251224</org.json.version>
 
-        <junit.version>5.11.0</junit.version>
+        <junit.version>5.12.2</junit.version>
     </properties>
 
     <dependencyManagement>
@@ -171,7 +171,7 @@
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.7.0</version>
+                        <version>0.10.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
@@ -183,7 +183,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.1.0</version>
+                        <version>3.2.7</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
