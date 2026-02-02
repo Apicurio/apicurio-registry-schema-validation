@@ -82,13 +82,25 @@ jobs:
 
       - name: Maven Deploy
         run: |
-          # Retry 3 times before the steps actually fails
-          (echo "===== Maven Deploy Attempt: 1 ====" && mvn deploy -Prelease --batch-mode --settings /home/runner/.m2/settings.xml -DskipTests) || \
-          (echo "===== Maven Deploy Attempt 1 Failed - Sleeping for 30 minutes ====" && sleep 30m) || \
-          (echo "===== Maven Deploy Attempt: 2 ====" && mvn deploy -Prelease --batch-mode --settings /home/runner/.m2/settings.xml -DskipTests) || \
-          (echo "===== Maven Deploy Attempt 1 Failed - Sleeping for 4 hours ====" && sleep 4h) || \
-          (echo "===== Maven Deploy Attempt: 3 ====" && mvn deploy -Prelease --batch-mode --settings /home/runner/.m2/settings.xml -DskipTests) || \
-          (echo "==== Maven Deploy Step Failed ====" && exit 1)
+          # Retry 3 times before the step actually fails
+          for attempt in 1 2 3; do
+            echo "===== Maven Deploy Attempt: $attempt ====="
+            if mvn deploy -Prelease --batch-mode --settings /home/runner/.m2/settings.xml -DskipTests; then
+              echo "===== Maven Deploy Succeeded ====="
+              exit 0
+            else
+              echo "===== Maven Deploy Attempt $attempt Failed ====="
+              if [ $attempt -eq 1 ]; then
+                echo "===== Sleeping for 30 minutes before retry ====="
+                sleep 30m
+              elif [ $attempt -eq 2 ]; then
+                echo "===== Sleeping for 4 hours before retry ====="
+                sleep 4h
+              fi
+            fi
+          done
+          echo "===== Maven Deploy Step Failed after 3 attempts ====="
+          exit 1
 
       - name: Update Snapshot version ${{ github.event.inputs.snapshot-version}}
         run: mvn versions:set -DnewVersion=${{ github.event.inputs.snapshot-version}} -DgenerateBackupPoms=false -DprocessAllModules=true
