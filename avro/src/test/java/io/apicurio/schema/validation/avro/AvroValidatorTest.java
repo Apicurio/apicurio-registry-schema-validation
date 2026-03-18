@@ -15,6 +15,8 @@
  */
 package io.apicurio.schema.validation.avro;
 
+import io.apicurio.registry.resolver.ParsedSchema;
+import io.apicurio.registry.resolver.ParsedSchemaImpl;
 import io.apicurio.registry.utils.IoUtil;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -86,6 +89,71 @@ public class AvroValidatorTest {
         assertFalse(result.getValidationErrors().isEmpty());
     }
 
+    @Test
+    public void testValidRecordWithReferences() {
+        AvroValidator validator = new AvroValidator();
+        AvroSchemaParser parser = new AvroSchemaParser();
+
+        // Parse the referenced schema first
+        byte[] addressBytes = readResourceBytes("address.avsc");
+        Schema addressSchema = new Schema.Parser().parse(IoUtil.toString(addressBytes));
+        ParsedSchemaImpl<Schema> addressParsedSchema = new ParsedSchemaImpl<Schema>()
+                .setParsedSchema(addressSchema)
+                .setRawSchema(addressBytes)
+                .setReferenceName("address.avsc");
+
+        // Parse the main schema with the reference
+        byte[] mainBytes = readResourceBytes("message-with-ref.avsc");
+        Map<String, ParsedSchema<Schema>> refs = Map.of("address.avsc", addressParsedSchema);
+        Schema mainSchema = parser.parseSchema(mainBytes, refs);
+
+        // Create a record with a nested Address
+        GenericRecord addressRecord = new GenericData.Record(addressSchema);
+        addressRecord.put("street", "123 Main St");
+        addressRecord.put("city", "Springfield");
+
+        GenericRecord record = new GenericData.Record(mainSchema);
+        record.put("message", "hello");
+        record.put("address", addressRecord);
+
+        var result = validator.validate(mainSchema, record);
+
+        assertTrue(result.success());
+        assertNull(result.getValidationErrors());
+    }
+
+    @Test
+    public void testInvalidRecordWithReferences() {
+        AvroValidator validator = new AvroValidator();
+        AvroSchemaParser parser = new AvroSchemaParser();
+
+        // Parse the referenced schema first
+        byte[] addressBytes = readResourceBytes("address.avsc");
+        Schema addressSchema = new Schema.Parser().parse(IoUtil.toString(addressBytes));
+        ParsedSchemaImpl<Schema> addressParsedSchema = new ParsedSchemaImpl<Schema>()
+                .setParsedSchema(addressSchema)
+                .setRawSchema(addressBytes)
+                .setReferenceName("address.avsc");
+
+        // Parse the main schema with the reference
+        byte[] mainBytes = readResourceBytes("message-with-ref.avsc");
+        Map<String, ParsedSchema<Schema>> refs = Map.of("address.avsc", addressParsedSchema);
+        Schema mainSchema = parser.parseSchema(mainBytes, refs);
+
+        // Validate with a schema that requires an extra field (message-invalid.avsc)
+        // The record is missing the "address" field
+        Schema invalidSchema = loadSchema("message-invalid.avsc");
+        GenericRecord record = new GenericData.Record(mainSchema);
+        record.put("message", "hello");
+        record.put("address", null);
+
+        var result = validator.validate(mainSchema, record);
+
+        // address field is not nullable, so setting null should fail
+        assertFalse(result.success());
+        assertNotNull(result.getValidationErrors());
+    }
+
     private GenericRecord createTestRecord(Schema schema) {
         GenericRecord record = new GenericData.Record(schema);
         record.put("message", "hello");
@@ -101,6 +169,15 @@ public class AvroValidatorTest {
         try (InputStream stream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourceName)) {
             Assertions.assertNotNull(stream, "Resource not found: " + resourceName);
             return IoUtil.toString(stream);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    public static byte[] readResourceBytes(String resourceName) {
+        try (InputStream stream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourceName)) {
+            Assertions.assertNotNull(stream, "Resource not found: " + resourceName);
+            return IoUtil.toBytes(stream);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
