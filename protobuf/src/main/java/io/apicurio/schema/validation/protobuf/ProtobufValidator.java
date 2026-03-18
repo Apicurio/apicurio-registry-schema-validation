@@ -1,6 +1,11 @@
 package io.apicurio.schema.validation.protobuf;
 
 import com.google.protobuf.Message;
+import com.squareup.wire.schema.internal.parser.FieldElement;
+import com.squareup.wire.schema.internal.parser.MessageElement;
+import com.squareup.wire.schema.internal.parser.OneOfElement;
+import com.squareup.wire.schema.internal.parser.ProtoFileElement;
+import com.squareup.wire.schema.internal.parser.TypeElement;
 import io.apicurio.registry.protobuf.ProtobufDifference;
 import io.apicurio.registry.protobuf.rules.compatibility.protobuf.ProtobufCompatibilityCheckerLibrary;
 import io.apicurio.registry.resolver.*;
@@ -12,6 +17,7 @@ import io.apicurio.registry.utils.protobuf.schema.ProtobufFile;
 import io.apicurio.registry.utils.protobuf.schema.ProtobufSchema;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Provides validation APIs for Protobuf objects against a Protobuf Schema.
@@ -107,11 +113,84 @@ public class ProtobufValidator {
 
     private List<ProtobufDifference> validate(ParsedSchema<ProtobufSchema> schemaFromRegistry, Message data) {
         ProtobufFile fileBefore = schemaFromRegistry.getParsedSchema().getProtobufFile();
-        ProtobufFile fileAfter = new ProtobufFile(
+        ProtoFileElement afterElement = normalizeFieldTypes(
                 protobufSchemaUSchemaParser.toProtoFileElement(data.getDescriptorForType().getFile()));
+        ProtobufFile fileAfter = new ProtobufFile(afterElement);
         ProtobufCompatibilityCheckerLibrary checker = new ProtobufCompatibilityCheckerLibrary(fileBefore,
                 fileAfter);
         return checker.findDifferences();
+    }
+
+    /**
+     * Normalizes fully qualified type names in a ProtoFileElement to use short form.
+     * Compiled protobuf descriptors store types as fully qualified (e.g., .package.Type),
+     * while parsed proto text uses short names (e.g., Type). This normalization ensures
+     * consistent type name format for comparison.
+     */
+    private ProtoFileElement normalizeFieldTypes(ProtoFileElement element) {
+        String packageName = element.getPackageName();
+        List<TypeElement> normalizedTypes = element.getTypes().stream()
+                .map(type -> type instanceof MessageElement
+                        ? normalizeMessage((MessageElement) type, packageName)
+                        : type)
+                .collect(Collectors.toList());
+
+        return new ProtoFileElement(element.getLocation(), element.getPackageName(),
+                element.getSyntax(), element.getImports(), element.getPublicImports(),
+                element.getWeakImports(), normalizedTypes, element.getServices(),
+                element.getExtendDeclarations(), element.getOptions());
+    }
+
+    private MessageElement normalizeMessage(MessageElement msg, String packageName) {
+        List<FieldElement> normalizedFields = msg.getFields().stream()
+                .map(field -> normalizeFieldElement(field, packageName))
+                .collect(Collectors.toList());
+
+        List<OneOfElement> normalizedOneOfs = new ArrayList<>();
+        for (OneOfElement oneOf : msg.getOneOfs()) {
+            List<FieldElement> oneOfFields = oneOf.getFields().stream()
+                    .map(field -> normalizeFieldElement(field, packageName))
+                    .collect(Collectors.toList());
+            normalizedOneOfs.add(new OneOfElement(oneOf.getName(), oneOf.getDocumentation(),
+                    oneOfFields, oneOf.getGroups(), oneOf.getOptions(), oneOf.getLocation()));
+        }
+
+        List<TypeElement> normalizedNestedTypes = msg.getNestedTypes().stream()
+                .map(type -> type instanceof MessageElement
+                        ? normalizeMessage((MessageElement) type, packageName)
+                        : type)
+                .collect(Collectors.toList());
+
+        return new MessageElement(msg.getLocation(), msg.getName(), msg.getDocumentation(),
+                normalizedNestedTypes, msg.getOptions(), msg.getReserveds(), normalizedFields,
+                normalizedOneOfs, msg.getExtensions(), msg.getGroups(), msg.getExtendDeclarations());
+    }
+
+    private FieldElement normalizeFieldElement(FieldElement field, String packageName) {
+        String type = normalizeTypeName(field.getType(), packageName);
+        if (type.equals(field.getType())) {
+            return field;
+        }
+        return new FieldElement(field.getLocation(), field.getLabel(), type,
+                field.getName(), field.getDefaultValue(), field.getJsonName(),
+                field.getTag(), field.getDocumentation(), field.getOptions());
+    }
+
+    private String normalizeTypeName(String type, String packageName) {
+        if (type == null || !type.startsWith(".")) {
+            return type;
+        }
+        // Strip leading dot and package prefix for same-package types
+        // e.g., ".io.apicurio.schema.validation.protobuf.ref.Address" -> "Address"
+        if (packageName != null) {
+            String prefix = "." + packageName + ".";
+            if (type.startsWith(prefix)) {
+                return type.substring(prefix.length());
+            }
+        }
+        // For other packages, strip just the leading dot
+        // e.g., ".other.package.Type" -> "other.package.Type"
+        return type.substring(1);
     }
 
     private String extractErrorMessage(Exception e) {

@@ -25,6 +25,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class AvroSchemaParser implements SchemaParser<Schema, GenericRecord> {
 
@@ -35,7 +36,20 @@ public class AvroSchemaParser implements SchemaParser<Schema, GenericRecord> {
 
     @Override
     public Schema parseSchema(byte[] rawSchema, Map<String, ParsedSchema<Schema>> resolvedReferences) {
-        return new Schema.Parser().parse(IoUtil.toString(rawSchema));
+        Schema.Parser parser = new Schema.Parser();
+        resolveReferences(resolvedReferences, parser);
+        return parser.parse(IoUtil.toString(rawSchema));
+    }
+
+    private void resolveReferences(Map<String, ParsedSchema<Schema>> resolvedReferences, Schema.Parser parser) {
+        resolvedReferences.forEach((referenceName, schema) -> {
+            if (schema.hasReferences()) {
+                resolveReferences(schema.getSchemaReferences()
+                        .stream()
+                        .collect(Collectors.toMap(ParsedSchema::referenceName, ps -> ps)), parser);
+            }
+            parser.parse(IoUtil.toString(schema.getRawSchema()));
+        });
     }
 
     @Override
