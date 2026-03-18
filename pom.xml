@@ -79,7 +79,7 @@
         <apicurio.registry.version>3.2.0</apicurio.registry.version>
         <json-schema-validator.version>1.5.1</json-schema-validator.version>
         <org.json.version>20251224</org.json.version>
-        <avro.version>1.12.0</avro.version>
+        <avro.version>1.12.1</avro.version>
 
         <junit.version>5.12.2</junit.version>
     </properties>
