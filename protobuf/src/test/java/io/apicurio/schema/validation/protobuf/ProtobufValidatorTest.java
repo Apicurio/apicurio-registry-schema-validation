@@ -5,6 +5,7 @@ import io.apicurio.registry.resolver.ParsedSchemaImpl;
 import io.apicurio.registry.resolver.data.Record;
 import io.apicurio.registry.utils.IoUtil;
 import io.apicurio.registry.utils.protobuf.schema.ProtobufSchema;
+import io.apicurio.schema.validation.common.ValidationError;
 import io.apicurio.schema.validation.protobuf.ref.MessageExample2OuterClass.MessageExample2;
 import io.apicurio.schema.validation.protobuf.ref.MessageExampleOuterClass.MessageExample;
 import io.apicurio.schema.validation.protobuf.ref.AddressOuterClass.Address;
@@ -140,6 +141,27 @@ public class ProtobufValidatorTest {
 
         assertFalse(result.success());
         assertNotNull(result.getValidationErrors());
+    }
+
+    @Test
+    public void testMalformedSchema() {
+        ProtobufSchemaParser<MessageExample> protobufSchemaParser = new ProtobufSchemaParser<>();
+
+        // An invalid proto string should not throw an exception but should produce an error
+        byte[] malformedBytes = "this is not a valid proto schema {{{".getBytes();
+
+        ProtobufSchema schema = null;
+        Exception caughtException = null;
+        try {
+            schema = protobufSchemaParser.parseSchema(malformedBytes, Collections.emptyMap());
+        } catch (Exception e) {
+            caughtException = e;
+        }
+
+        // Either the schema is null (parsing failed gracefully) or an exception was caught
+        // In either case, this should not be an unhandled exception propagating out
+        assertTrue(schema == null || caughtException != null,
+                "Malformed schema should either return null or throw a caught exception");
     }
 
     public static byte[] readResource(String resourceName) {

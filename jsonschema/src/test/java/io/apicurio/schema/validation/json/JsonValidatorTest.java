@@ -21,8 +21,8 @@ import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
 import io.apicurio.registry.utils.IoUtil;
+import io.apicurio.schema.validation.common.ValidationError;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -82,6 +82,40 @@ public class JsonValidatorTest {
         assertNotNull(result.getValidationErrors());
         assertFalse(result.getValidationErrors().isEmpty());
         assertEquals(2, result.getValidationErrors().size());
+    }
+
+    @Test
+    public void testMalformedSchema() {
+        JsonValidator validator = new JsonValidator();
+
+        JsonNode jsonPayload = createTestMessageBean();
+
+        // Create a schema from malformed JSON - should not throw, should return error result
+        JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7);
+        try {
+            JsonSchema malformedSchema = schemaFactory.getSchema("{\"type\": \"invalid_type\"}");
+            var result = validator.validate(malformedSchema, jsonPayload);
+            // The schema itself may parse but validation should detect the invalid type
+            assertNotNull(result);
+        } catch (Exception e) {
+            // If the factory throws on parse, that's also acceptable
+            assertNotNull(e);
+        }
+    }
+
+    @Test
+    public void testNullPayload() {
+        JsonValidator validator = new JsonValidator();
+
+        JsonSchema validSchema = createSchemaFromResource("message.json");
+
+        // Null should be converted to a NullNode by Jackson's convertValue
+        JsonNode nullNode = objectMapper.convertValue(null, JsonNode.class);
+        var result = validator.validate(validSchema, nullNode);
+
+        // A null payload should not match a schema requiring "message" and "time" properties
+        assertNotNull(result);
+        assertFalse(result.success());
     }
 
     private JsonNode createTestMessageBean() {

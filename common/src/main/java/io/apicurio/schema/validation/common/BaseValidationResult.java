@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Red Hat
+ * Copyright 2026 Red Hat
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,26 @@
  * limitations under the License.
  */
 
-package io.apicurio.schema.validation.protobuf;
+package io.apicurio.schema.validation.common;
 
-/**
- * @deprecated Use {@link io.apicurio.schema.validation.common.ValidationError} instead.
- */
-@Deprecated
-public class ValidationError extends io.apicurio.schema.validation.common.ValidationError {
+import java.util.List;
 
-    public ValidationError() {
-        super();
+public class BaseValidationResult {
+
+    private final boolean success;
+    private final List<ValidationError> validationErrors;
+
+    protected BaseValidationResult(boolean success, List<ValidationError> validationErrors) {
+        this.success = success;
+        this.validationErrors = validationErrors;
     }
 
-    public ValidationError(String message, String context) {
-        super(message, context);
+    public boolean success() {
+        return success;
+    }
+
+    public List<ValidationError> getValidationErrors() {
+        return validationErrors;
     }
 
 }

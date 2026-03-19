@@ -17,6 +17,7 @@
 package io.apicurio.schema.validation.avro;
 
 import io.apicurio.registry.resolver.ParsedSchema;
+import io.apicurio.registry.resolver.ParsedSchemaImpl;
 import io.apicurio.registry.resolver.SchemaParser;
 import io.apicurio.registry.resolver.data.Record;
 import io.apicurio.registry.types.ArtifactType;
@@ -54,16 +55,21 @@ public class AvroSchemaParser implements SchemaParser<Schema, GenericRecord> {
 
     @Override
     public ParsedSchema<Schema> getSchemaFromData(Record<GenericRecord> data) {
-        return null;
+        Schema schema = data.payload().getSchema();
+        byte[] rawSchema = IoUtil.toBytes(schema.toString());
+        return new ParsedSchemaImpl<Schema>()
+                .setParsedSchema(schema)
+                .setRawSchema(rawSchema)
+                .setReferenceName(schema.getFullName());
     }
 
     @Override
     public ParsedSchema<Schema> getSchemaFromData(Record<GenericRecord> record, boolean dereference) {
-        return null;
+        return getSchemaFromData(record);
     }
 
     @Override
     public boolean supportsExtractSchemaFromData() {
-        return false;
+        return true;
     }
 }

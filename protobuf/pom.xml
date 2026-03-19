@@ -14,13 +14,17 @@
     <name>apicurio-registry-schema-validation-protobuf</name>
 
     <properties>
-        <protobuf.version>3.21.6</protobuf.version>
+        <protobuf.version>3.25.5</protobuf.version>
         <!-- Proto -->
         <proto-plugin.version>0.6.1</proto-plugin.version>
         <os-maven-plugin.version>1.7.0</os-maven-plugin.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>io.apicurio</groupId>
+            <artifactId>apicurio-registry-schema-validation-common</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.apicurio</groupId>
             <artifactId>apicurio-registry-schema-resolver</artifactId>
