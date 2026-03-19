@@ -22,7 +22,9 @@ import io.apicurio.registry.resolver.SchemaResolver;
 import io.apicurio.registry.resolver.config.SchemaResolverConfig;
 import io.apicurio.registry.resolver.data.Record;
 import io.apicurio.registry.resolver.strategy.ArtifactReference;
-import io.apicurio.registry.rest.client.models.ProblemDetails;
+import io.apicurio.schema.validation.common.ErrorMessageExtractor;
+import io.apicurio.schema.validation.common.SchemaValidator;
+import io.apicurio.schema.validation.common.ValidationError;
 import org.apache.avro.AvroTypeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
@@ -31,7 +33,9 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.JsonDecoder;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,7 +47,7 @@ import java.util.Optional;
  *
  * @author Carles Arnal
  */
-public class AvroValidator {
+public class AvroValidator implements SchemaValidator<GenericRecord, AvroValidationResult> {
 
     private SchemaResolver<Schema, GenericRecord> schemaResolver;
     private ArtifactReference artifactReference;
@@ -72,6 +76,7 @@ public class AvroValidator {
      * @param record , the GenericRecord that will be validated against the Avro Schema.
      * @return AvroValidationResult
      */
+    @Override
     public AvroValidationResult validateByArtifactReference(GenericRecord record) {
         Objects.requireNonNull(this.artifactReference,
                 "ArtifactReference must be provided when creating AvroValidator in order to use this feature");
@@ -80,7 +85,7 @@ public class AvroValidator {
             return validate(schema.getParsedSchema().getParsedSchema(), record);
         } catch (Exception e) {
             return AvroValidationResult.fromErrors(List.of(
-                new ValidationError("Failed to resolve schema from registry: " + extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
+                new ValidationError("Failed to resolve schema from registry: " + ErrorMessageExtractor.extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
             ));
         }
     }
@@ -100,7 +105,7 @@ public class AvroValidator {
             return validateJson(schema.getParsedSchema().getParsedSchema(), json);
         } catch (Exception e) {
             return AvroValidationResult.fromErrors(List.of(
-                new ValidationError("Failed to resolve schema from registry: " + extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
+                new ValidationError("Failed to resolve schema from registry: " + ErrorMessageExtractor.extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
             ));
         }
     }
@@ -114,15 +119,26 @@ public class AvroValidator {
      * @param record , the record used to resolve the schema used for validation and to provide the payload to validate.
      * @return AvroValidationResult
      */
+    @Override
     public AvroValidationResult validate(Record<GenericRecord> record) {
         try {
             SchemaLookupResult<Schema> schema = this.schemaResolver.resolveSchema(record);
             return validate(schema.getParsedSchema().getParsedSchema(), record.payload());
         } catch (Exception e) {
             return AvroValidationResult.fromErrors(List.of(
-                new ValidationError("Failed to resolve schema from registry: " + extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
+                new ValidationError("Failed to resolve schema from registry: " + ErrorMessageExtractor.extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
             ));
         }
+    }
+
+    @Override
+    public void close() throws IOException {
+        schemaResolver.close();
+    }
+
+    @Override
+    public void reset() {
+        schemaResolver.reset();
     }
 
     protected AvroValidationResult validate(Schema schema, GenericRecord record) {
@@ -251,36 +267,32 @@ public class AvroValidator {
         return false;
     }
 
-    private String extractErrorMessage(Exception e) {
-        StringBuilder errorMessage = new StringBuilder();
-
-        errorMessage.append(e.getClass().getSimpleName());
-        String message = getDetailedMessage(e);
-        if (message != null && !message.isEmpty()) {
-            errorMessage.append(": ").append(message);
-        }
-
-        Throwable cause = e.getCause();
-        while (cause != null) {
-            errorMessage.append(" | Caused by: ").append(cause.getClass().getSimpleName());
-            String causeMessage = getDetailedMessage(cause);
-            if (causeMessage != null && !causeMessage.isEmpty()) {
-                errorMessage.append(": ").append(causeMessage);
-            }
-            cause = cause.getCause();
-        }
-
-        return errorMessage.toString();
+    public static Builder builder() {
+        return new Builder();
     }
 
-    private String getDetailedMessage(Throwable throwable) {
-        if (throwable instanceof ProblemDetails) {
-            String detail = ((ProblemDetails) throwable).getDetail();
-            if (detail != null && !detail.isEmpty()) {
-                return detail;
-            }
+    public static class Builder {
+        private final Map<String, Object> configuration = new HashMap<>();
+        private ArtifactReference artifactReference;
+
+        public Builder registryUrl(String url) {
+            configuration.put("apicurio.registry.url", url);
+            return this;
         }
-        return throwable.getMessage();
+
+        public Builder artifactReference(ArtifactReference ref) {
+            this.artifactReference = ref;
+            return this;
+        }
+
+        public Builder configuration(String key, Object value) {
+            configuration.put(key, value);
+            return this;
+        }
+
+        public AvroValidator build() {
+            return new AvroValidator(configuration, Optional.ofNullable(artifactReference));
+        }
     }
 
 }

@@ -1,41 +1,32 @@
 package io.apicurio.schema.validation.protobuf;
 
+import io.apicurio.schema.validation.common.BaseValidationResult;
+import io.apicurio.schema.validation.common.ValidationError;
+
 import java.util.List;
 
-public class ProtobufValidationResult {
+public class ProtobufValidationResult extends BaseValidationResult {
 
     protected static final ProtobufValidationResult SUCCESS = successful();
 
-    private boolean success;
-    private List<ValidationError> validationErrors;
-
-    private ProtobufValidationResult(List<ValidationError> validationErrors) {
-        this.validationErrors = validationErrors;
-        this.success = this.validationErrors == null || this.validationErrors.isEmpty();
-    }
-
-    public boolean success() {
-        return success;
-    }
-
-    public List<ValidationError> getValidationErrors() {
-        return validationErrors;
+    private ProtobufValidationResult(boolean success, List<ValidationError> validationErrors) {
+        super(success, validationErrors);
     }
 
     @Override
     public String toString() {
-        if (this.success) {
+        if (this.success()) {
             return "ProtobufValidationResult [ success ]";
         } else {
-            return "ProtobufValidationResult [ errors = " + validationErrors.toString() + " ]";
+            return "ProtobufValidationResult [ errors = " + getValidationErrors().toString() + " ]";
         }
     }
 
     public static ProtobufValidationResult fromErrors(List<ValidationError> errors) {
-        return new ProtobufValidationResult(errors);
+        return new ProtobufValidationResult(errors == null || errors.isEmpty(), errors);
     }
 
     public static ProtobufValidationResult successful() {
-        return new ProtobufValidationResult(null);
+        return new ProtobufValidationResult(true, null);
     }
 }

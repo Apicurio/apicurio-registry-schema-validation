@@ -12,11 +12,16 @@ import io.apicurio.registry.resolver.*;
 import io.apicurio.registry.resolver.config.SchemaResolverConfig;
 import io.apicurio.registry.resolver.data.Record;
 import io.apicurio.registry.resolver.strategy.ArtifactReference;
-import io.apicurio.registry.rest.client.models.ProblemDetails;
 import io.apicurio.registry.utils.protobuf.schema.ProtobufFile;
 import io.apicurio.registry.utils.protobuf.schema.ProtobufSchema;
+import io.apicurio.schema.validation.common.ErrorMessageExtractor;
+import io.apicurio.schema.validation.common.SchemaValidator;
+import io.apicurio.schema.validation.common.ValidationError;
 
+import java.io.IOException;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -25,7 +30,9 @@ import java.util.stream.Collectors;
  *
  * @author Carles Arnal
  */
-public class ProtobufValidator {
+public class ProtobufValidator implements SchemaValidator<Message, ProtobufValidationResult> {
+
+    private static final Pattern MESSAGE_NAME_PATTERN = Pattern.compile("message\\s+(\\w+)");
 
     private final ProtobufSchemaParser<Message> protobufSchemaUSchemaParser;
     private SchemaResolver<ProtobufSchema, Message> schemaResolver;
@@ -51,6 +58,10 @@ public class ProtobufValidator {
         this.protobufSchemaUSchemaParser = new ProtobufSchemaParser<>();
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     /**
      * Validates the provided object against a Protobuf Schema.
      * The Protobuf Schema will be fetched from Apicurio Registry using the {@link ArtifactReference} provided in the constructor, this artifact must exist in the registry.
@@ -58,16 +69,17 @@ public class ProtobufValidator {
      * @param bean , the object that will be validated against the Protobuf Schema, must implement {@link Message}.
      * @return ProtobufValidationResult
      */
+    @Override
     public ProtobufValidationResult validateByArtifactReference(Message bean) {
         Objects.requireNonNull(this.artifactReference,
-                "ArtifactReference must be provided when creating JsonValidator in order to use this feature");
+                "ArtifactReference must be provided when creating ProtobufValidator in order to use this feature");
         try {
             SchemaLookupResult<ProtobufSchema> schema = this.schemaResolver.resolveSchemaByArtifactReference(
                     this.artifactReference);
             return validate(schema.getParsedSchema(), new ProtobufRecord(bean, null));
         } catch (Exception e) {
             return ProtobufValidationResult.fromErrors(List.of(
-                new ValidationError("Failed to resolve schema from registry: " + extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
+                new ValidationError("Failed to resolve schema from registry: " + ErrorMessageExtractor.extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
             ));
         }
     }
@@ -81,14 +93,29 @@ public class ProtobufValidator {
      * @param record , the record used to resolve the schema used for validation and to provide the payload to validate.
      * @return ProtobufValidationResult
      */
+    @Override
     public ProtobufValidationResult validate(Record<Message> record) {
         try {
             SchemaLookupResult<ProtobufSchema> schema = this.schemaResolver.resolveSchema(record);
             return validate(schema.getParsedSchema(), record);
         } catch (Exception e) {
             return ProtobufValidationResult.fromErrors(List.of(
-                new ValidationError("Failed to resolve schema from registry: " + extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
+                new ValidationError("Failed to resolve schema from registry: " + ErrorMessageExtractor.extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
             ));
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (schemaResolver != null) {
+            schemaResolver.close();
+        }
+    }
+
+    @Override
+    public void reset() {
+        if (schemaResolver != null) {
+            schemaResolver.reset();
         }
     }
 
@@ -104,11 +131,22 @@ public class ProtobufValidator {
         List<ProtobufDifference> diffs = validate(schema, record.payload());
         if (!diffs.isEmpty()) {
             List<ValidationError> validationErrors = new ArrayList<>();
-            diffs.forEach(diff -> validationErrors.add(new ValidationError(diff.getMessage(), "")));
+            diffs.forEach(diff -> validationErrors.add(new ValidationError(diff.getMessage(), extractContextFromDiff(diff.getMessage()))));
             return ProtobufValidationResult.fromErrors(validationErrors);
         }
 
         return ProtobufValidationResult.SUCCESS;
+    }
+
+    private String extractContextFromDiff(String diffMessage) {
+        if (diffMessage == null) {
+            return "";
+        }
+        Matcher matcher = MESSAGE_NAME_PATTERN.matcher(diffMessage);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return "";
     }
 
     private List<ProtobufDifference> validate(ParsedSchema<ProtobufSchema> schemaFromRegistry, Message data) {
@@ -193,38 +231,27 @@ public class ProtobufValidator {
         return type.substring(1);
     }
 
-    private String extractErrorMessage(Exception e) {
-        StringBuilder errorMessage = new StringBuilder();
+    public static class Builder {
+        private final Map<String, Object> configuration = new HashMap<>();
+        private ArtifactReference artifactReference;
 
-        // Start with the exception type and message
-        errorMessage.append(e.getClass().getSimpleName());
-        String message = getDetailedMessage(e);
-        if (message != null && !message.isEmpty()) {
-            errorMessage.append(": ").append(message);
+        public Builder registryUrl(String url) {
+            configuration.put("apicurio.registry.url", url);
+            return this;
         }
 
-        // Add cause chain for more context
-        Throwable cause = e.getCause();
-        while (cause != null) {
-            errorMessage.append(" | Caused by: ").append(cause.getClass().getSimpleName());
-            String causeMessage = getDetailedMessage(cause);
-            if (causeMessage != null && !causeMessage.isEmpty()) {
-                errorMessage.append(": ").append(causeMessage);
-            }
-            cause = cause.getCause();
+        public Builder artifactReference(ArtifactReference ref) {
+            this.artifactReference = ref;
+            return this;
         }
 
-        return errorMessage.toString();
-    }
-
-    private String getDetailedMessage(Throwable throwable) {
-        // Special handling for ProblemDetails from Apicurio Registry REST client
-        if (throwable instanceof ProblemDetails) {
-            String detail = ((ProblemDetails) throwable).getDetail();
-            if (detail != null && !detail.isEmpty()) {
-                return detail;
-            }
+        public Builder configuration(String key, Object value) {
+            configuration.put(key, value);
+            return this;
         }
-        return throwable.getMessage();
+
+        public ProtobufValidator build() {
+            return new ProtobufValidator(configuration, Optional.ofNullable(artifactReference));
+        }
     }
 }

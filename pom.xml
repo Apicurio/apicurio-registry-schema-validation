@@ -63,6 +63,7 @@
     </scm>
 
     <modules>
+        <module>common</module>
         <module>jsonschema</module>
         <module>protobuf</module>
         <module>avro</module>
@@ -86,6 +87,12 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>io.apicurio</groupId>
+                <artifactId>apicurio-registry-schema-validation-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>io.apicurio</groupId>
                 <artifactId>apicurio-registry-schema-resolver</artifactId>

@@ -16,46 +16,37 @@
 
 package io.apicurio.schema.validation.json;
 
+import io.apicurio.schema.validation.common.BaseValidationResult;
+import io.apicurio.schema.validation.common.ValidationError;
+
 import java.util.List;
 
 /**
  * @author Fabian Martinez
  */
-public class JsonValidationResult {
+public class JsonValidationResult extends BaseValidationResult {
 
     protected static final JsonValidationResult SUCCESS = successful();
 
-    private boolean success;
-    private List<ValidationError> validationErrors;
-
-    private JsonValidationResult(List<ValidationError> validationErrors) {
-        this.validationErrors = validationErrors;
-        this.success = this.validationErrors == null || this.validationErrors.isEmpty();
-    }
-
-    public boolean success() {
-        return success;
-    }
-
-    public List<ValidationError> getValidationErrors() {
-        return validationErrors;
+    private JsonValidationResult(boolean success, List<ValidationError> validationErrors) {
+        super(success, validationErrors);
     }
 
     @Override
     public String toString() {
-        if (this.success) {
+        if (this.success()) {
             return "JsonValidationResult [ success ]";
         } else {
-            return "JsonValidationResult [ errors = " + validationErrors.toString() + " ]";
+            return "JsonValidationResult [ errors = " + getValidationErrors().toString() + " ]";
         }
     }
 
     public static JsonValidationResult fromErrors(List<ValidationError> errors) {
-        return new JsonValidationResult(errors);
+        return new JsonValidationResult(errors == null || errors.isEmpty(), errors);
     }
 
     public static JsonValidationResult successful() {
-        return new JsonValidationResult(null);
+        return new JsonValidationResult(true, null);
     }
 
 }

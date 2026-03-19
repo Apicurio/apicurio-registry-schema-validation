@@ -16,43 +16,34 @@
 
 package io.apicurio.schema.validation.avro;
 
+import io.apicurio.schema.validation.common.BaseValidationResult;
+import io.apicurio.schema.validation.common.ValidationError;
+
 import java.util.List;
 
-public class AvroValidationResult {
+public class AvroValidationResult extends BaseValidationResult {
 
     protected static final AvroValidationResult SUCCESS = successful();
 
-    private boolean success;
-    private List<ValidationError> validationErrors;
-
-    private AvroValidationResult(List<ValidationError> validationErrors) {
-        this.validationErrors = validationErrors;
-        this.success = this.validationErrors == null || this.validationErrors.isEmpty();
-    }
-
-    public boolean success() {
-        return success;
-    }
-
-    public List<ValidationError> getValidationErrors() {
-        return validationErrors;
+    private AvroValidationResult(boolean success, List<ValidationError> validationErrors) {
+        super(success, validationErrors);
     }
 
     @Override
     public String toString() {
-        if (this.success) {
+        if (this.success()) {
             return "AvroValidationResult [ success ]";
         } else {
-            return "AvroValidationResult [ errors = " + validationErrors.toString() + " ]";
+            return "AvroValidationResult [ errors = " + getValidationErrors().toString() + " ]";
         }
     }
 
     public static AvroValidationResult fromErrors(List<ValidationError> errors) {
-        return new AvroValidationResult(errors);
+        return new AvroValidationResult(errors == null || errors.isEmpty(), errors);
     }
 
     public static AvroValidationResult successful() {
-        return new AvroValidationResult(null);
+        return new AvroValidationResult(true, null);
     }
 
 }

@@ -28,13 +28,13 @@ import io.apicurio.registry.resolver.ParsedSchema;
 import io.apicurio.registry.resolver.SchemaLookupResult;
 import io.apicurio.registry.resolver.SchemaParser;
 import io.apicurio.registry.resolver.SchemaResolver;
-import io.apicurio.registry.resolver.config.SchemaResolverConfig;
 import io.apicurio.registry.resolver.data.Record;
 import io.apicurio.registry.resolver.strategy.ArtifactReference;
-import io.apicurio.registry.rest.client.models.ProblemDetails;
 import io.apicurio.registry.types.ArtifactType;
 import io.apicurio.registry.utils.IoUtil;
-import org.json.JSONObject;
+import io.apicurio.schema.validation.common.ErrorMessageExtractor;
+import io.apicurio.schema.validation.common.SchemaValidator;
+import io.apicurio.schema.validation.common.ValidationError;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,7 +54,9 @@ import java.util.stream.Collectors;
  *
  * @author Fabian Martinez
  */
-public class JsonValidator {
+public class JsonValidator implements SchemaValidator<Object, JsonValidationResult> {
+
+    public static final String JSON_SCHEMA_SPEC_VERSION = "json.schema.spec.version";
 
     private SchemaResolver<JsonSchema, Object> schemaResolver;
     private ArtifactReference artifactReference;
@@ -65,12 +67,12 @@ public class JsonValidator {
      * Creates the JSON validator.
      * If artifactReference is provided it must exist in Apicurio Registry.
      *
-     * @param configuration     , configuration properties for {@link DefaultSchemaResolver} for config properties see {@link SchemaResolverConfig}
+     * @param configuration     , configuration properties for {@link DefaultSchemaResolver} for config properties see {@link io.apicurio.registry.resolver.config.SchemaResolverConfig}
      * @param artifactReference , optional {@link ArtifactReference} used as a static configuration to always use the same schema for validation when invoking {@link JsonValidator#validateByArtifactReference(Object)}
      */
     public JsonValidator(Map<String, Object> configuration, Optional<ArtifactReference> artifactReference) {
         this.schemaResolver = new DefaultSchemaResolver<>();
-        this.schemaResolver.configure(configuration, new JsonSchemaParser());
+        this.schemaResolver.configure(configuration, new JsonSchemaParser(configuration));
         artifactReference.ifPresent(reference -> this.artifactReference = reference);
     }
 
@@ -79,12 +81,22 @@ public class JsonValidator {
     }
 
     /**
+     * Returns a new Builder for constructing a JsonValidator.
+     *
+     * @return a new Builder instance
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
      * Validates the provided object against a JSON Schema.
      * The JSON Schema will be fetched from Apicurio Registry using the {@link ArtifactReference} provided in the constructor, this artifact must exist in the registry.
      *
-     * @param bean, the object that will be validate against the JSON Schema, can be a custom Java bean, String, byte[], InputStream, {@link JSONObject} or Map.
+     * @param bean, the object that will be validate against the JSON Schema, can be a custom Java bean, String, byte[], InputStream, {@link org.json.JSONObject} or Map.
      * @return JsonValidationResult
      */
+    @Override
     public JsonValidationResult validateByArtifactReference(Object bean) {
         Objects.requireNonNull(this.artifactReference, "ArtifactReference must be provided when creating JsonValidator in order to use this feature");
         try {
@@ -93,20 +105,21 @@ public class JsonValidator {
             return validate(schema.getParsedSchema().getParsedSchema(), jsonPayload);
         } catch (Exception e) {
             return JsonValidationResult.fromErrors(List.of(
-                new ValidationError("Failed to resolve schema from registry: " + extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
+                new ValidationError("Failed to resolve schema from registry: " + ErrorMessageExtractor.extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
             ));
         }
     }
 
     /**
      * Validates the payload of the provided Record against a JSON Schema.
-     * This method will resolve the schema based on the configuration provided in the constructor. See {@link SchemaResolverConfig} for configuration options and features of {@link SchemaResolver}.
+     * This method will resolve the schema based on the configuration provided in the constructor. See {@link io.apicurio.registry.resolver.config.SchemaResolverConfig} for configuration options and features of {@link SchemaResolver}.
      * You can use {@link JsonRecord} as the implementation for the provided record or you can use an implementation of your own.
      * Opposite to {@link JsonValidator#validateByArtifactReference(Object)} this method allow to dynamically use a different schema for validating each record.
      *
      * @param record , the record used to resolve the schema used for validation and to provide the payload to validate.
      * @return JsonValidationResult
      */
+    @Override
     public JsonValidationResult validate(Record<Object> record) {
         try {
             SchemaLookupResult<JsonSchema> schema = this.schemaResolver.resolveSchema(record);
@@ -114,9 +127,19 @@ public class JsonValidator {
             return validate(schema.getParsedSchema().getParsedSchema(), jsonPayload);
         } catch (Exception e) {
             return JsonValidationResult.fromErrors(List.of(
-                new ValidationError("Failed to resolve schema from registry: " + extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
+                new ValidationError("Failed to resolve schema from registry: " + ErrorMessageExtractor.extractErrorMessage(e), "SCHEMA_RESOLUTION_ERROR")
             ));
         }
+    }
+
+    @Override
+    public void close() throws IOException {
+        schemaResolver.close();
+    }
+
+    @Override
+    public void reset() {
+        schemaResolver.reset();
     }
 
     protected JsonValidationResult validate(JsonSchema schema, JsonNode jsonPayload) {
@@ -155,42 +178,23 @@ public class JsonValidator {
         return errors;
     }
 
-    private String extractErrorMessage(Exception e) {
-        StringBuilder errorMessage = new StringBuilder();
-
-        // Start with the exception type and message
-        errorMessage.append(e.getClass().getSimpleName());
-        String message = getDetailedMessage(e);
-        if (message != null && !message.isEmpty()) {
-            errorMessage.append(": ").append(message);
-        }
-
-        // Add cause chain for more context
-        Throwable cause = e.getCause();
-        while (cause != null) {
-            errorMessage.append(" | Caused by: ").append(cause.getClass().getSimpleName());
-            String causeMessage = getDetailedMessage(cause);
-            if (causeMessage != null && !causeMessage.isEmpty()) {
-                errorMessage.append(": ").append(causeMessage);
-            }
-            cause = cause.getCause();
-        }
-
-        return errorMessage.toString();
-    }
-
-    private String getDetailedMessage(Throwable throwable) {
-        // Special handling for ProblemDetails from Apicurio Registry REST client
-        if (throwable instanceof ProblemDetails) {
-            String detail = ((ProblemDetails) throwable).getDetail();
-            if (detail != null && !detail.isEmpty()) {
-                return detail;
-            }
-        }
-        return throwable.getMessage();
-    }
-
     public static class JsonSchemaParser implements SchemaParser<JsonSchema, Object> {
+
+        private final SpecVersion.VersionFlag specVersion;
+
+        public JsonSchemaParser() {
+            this.specVersion = SpecVersion.VersionFlag.V7;
+        }
+
+        public JsonSchemaParser(Map<String, Object> configuration) {
+            if (configuration != null && configuration.containsKey(JSON_SCHEMA_SPEC_VERSION)) {
+                String versionStr = configuration.get(JSON_SCHEMA_SPEC_VERSION).toString();
+                this.specVersion = SpecVersion.VersionFlag.valueOf(versionStr);
+            } else {
+                this.specVersion = SpecVersion.VersionFlag.V7;
+            }
+        }
+
         @Override
         public String artifactType() {
             return ArtifactType.JSON;
@@ -203,7 +207,7 @@ public class JsonValidator {
             resolveReferences(resolvedReferences, referenceSchemas);
 
             JsonSchemaFactory schemaFactory = JsonSchemaFactory
-                    .getInstance(SpecVersion.VersionFlag.V7,
+                    .getInstance(specVersion,
                             builder -> builder.schemaLoaders(schemaLoaders -> schemaLoaders.schemas(referenceSchemas)));
 
             return schemaFactory.getSchema(IoUtil.toString(rawSchema));
@@ -236,6 +240,38 @@ public class JsonValidator {
         @Override
         public boolean supportsExtractSchemaFromData() {
             return false;
+        }
+    }
+
+    /**
+     * Builder for creating JsonValidator instances.
+     */
+    public static class Builder {
+        private final Map<String, Object> configuration = new HashMap<>();
+        private ArtifactReference artifactReference;
+
+        public Builder registryUrl(String url) {
+            configuration.put("apicurio.registry.url", url);
+            return this;
+        }
+
+        public Builder artifactReference(ArtifactReference ref) {
+            this.artifactReference = ref;
+            return this;
+        }
+
+        public Builder configuration(String key, Object value) {
+            configuration.put(key, value);
+            return this;
+        }
+
+        public Builder specVersion(SpecVersion.VersionFlag version) {
+            configuration.put(JSON_SCHEMA_SPEC_VERSION, version.name());
+            return this;
+        }
+
+        public JsonValidator build() {
+            return new JsonValidator(configuration, Optional.ofNullable(artifactReference));
         }
     }
 

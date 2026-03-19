@@ -18,6 +18,7 @@ package io.apicurio.schema.validation.avro;
 import io.apicurio.registry.resolver.ParsedSchema;
 import io.apicurio.registry.resolver.ParsedSchemaImpl;
 import io.apicurio.registry.utils.IoUtil;
+import io.apicurio.schema.validation.common.ValidationError;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -152,6 +154,103 @@ public class AvroValidatorTest {
         // address field is not nullable, so setting null should fail
         assertFalse(result.success());
         assertNotNull(result.getValidationErrors());
+    }
+
+    @Test
+    public void testEnumValidation() {
+        AvroValidator validator = new AvroValidator();
+
+        String schemaJson = "{"
+                + "\"type\": \"record\","
+                + "\"name\": \"TestEnum\","
+                + "\"namespace\": \"io.apicurio.test\","
+                + "\"fields\": ["
+                + "  {\"name\": \"color\", \"type\": {\"type\": \"enum\", \"name\": \"Color\", \"symbols\": [\"RED\", \"GREEN\", \"BLUE\"]}}"
+                + "]"
+                + "}";
+        Schema schema = new Schema.Parser().parse(schemaJson);
+
+        // Valid enum value
+        GenericRecord validRecord = new GenericData.Record(schema);
+        validRecord.put("color", new GenericData.EnumSymbol(schema.getField("color").schema(), "RED"));
+        var validResult = validator.validate(schema, validRecord);
+        assertTrue(validResult.success());
+
+        // Invalid enum value - use validateJson to test invalid enum since GenericData.EnumSymbol
+        // will throw at construction time for invalid values
+        String invalidJson = "{\"color\": \"YELLOW\"}";
+        var invalidResult = validator.validateJson(schema, invalidJson);
+        assertFalse(invalidResult.success());
+        assertNotNull(invalidResult.getValidationErrors());
+        assertFalse(invalidResult.getValidationErrors().isEmpty());
+    }
+
+    @Test
+    public void testArrayValidation() {
+        AvroValidator validator = new AvroValidator();
+
+        String schemaJson = "{"
+                + "\"type\": \"record\","
+                + "\"name\": \"TestArray\","
+                + "\"namespace\": \"io.apicurio.test\","
+                + "\"fields\": ["
+                + "  {\"name\": \"tags\", \"type\": {\"type\": \"array\", \"items\": \"string\"}}"
+                + "]"
+                + "}";
+        Schema schema = new Schema.Parser().parse(schemaJson);
+
+        // Valid array value
+        GenericRecord record = new GenericData.Record(schema);
+        record.put("tags", List.of("tag1", "tag2", "tag3"));
+        var result = validator.validate(schema, record);
+        assertTrue(result.success());
+
+        // Empty array is also valid
+        GenericRecord emptyArrayRecord = new GenericData.Record(schema);
+        emptyArrayRecord.put("tags", List.of());
+        var emptyResult = validator.validate(schema, emptyArrayRecord);
+        assertTrue(emptyResult.success());
+    }
+
+    @Test
+    public void testUnionValidation() {
+        AvroValidator validator = new AvroValidator();
+
+        String schemaJson = "{"
+                + "\"type\": \"record\","
+                + "\"name\": \"TestUnion\","
+                + "\"namespace\": \"io.apicurio.test\","
+                + "\"fields\": ["
+                + "  {\"name\": \"optionalName\", \"type\": [\"null\", \"string\"], \"default\": null}"
+                + "]"
+                + "}";
+        Schema schema = new Schema.Parser().parse(schemaJson);
+
+        // Valid with null value
+        GenericRecord nullRecord = new GenericData.Record(schema);
+        nullRecord.put("optionalName", null);
+        var nullResult = validator.validate(schema, nullRecord);
+        assertTrue(nullResult.success());
+
+        // Valid with string value
+        GenericRecord stringRecord = new GenericData.Record(schema);
+        stringRecord.put("optionalName", "John");
+        var stringResult = validator.validate(schema, stringRecord);
+        assertTrue(stringResult.success());
+    }
+
+    @Test
+    public void testMalformedJson() {
+        AvroValidator validator = new AvroValidator();
+
+        Schema schema = loadSchema("message.avsc");
+        String malformedJson = "{this is not valid json}";
+
+        var result = validator.validateJson(schema, malformedJson);
+
+        assertFalse(result.success());
+        assertNotNull(result.getValidationErrors());
+        assertFalse(result.getValidationErrors().isEmpty());
     }
 
     private GenericRecord createTestRecord(Schema schema) {

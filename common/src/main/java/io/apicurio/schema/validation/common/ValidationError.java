@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Red Hat
+ * Copyright 2026 Red Hat
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,40 @@
  * limitations under the License.
  */
 
-package io.apicurio.schema.validation.protobuf;
+package io.apicurio.schema.validation.common;
 
-/**
- * @deprecated Use {@link io.apicurio.schema.validation.common.ValidationError} instead.
- */
-@Deprecated
-public class ValidationError extends io.apicurio.schema.validation.common.ValidationError {
+public class ValidationError {
+
+    private String message;
+    private String context;
 
     public ValidationError() {
-        super();
     }
 
     public ValidationError(String message, String context) {
-        super(message, context);
+        this.message = message;
+        this.context = context;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public String getContext() {
+        return context;
+    }
+
+    public void setContext(String context) {
+        this.context = context;
+    }
+
+    @Override
+    public String toString() {
+        return "{context=" + context + ", message=" + message + "}";
     }
 
 }
